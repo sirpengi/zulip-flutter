@@ -309,6 +309,17 @@ class MathBlockNode extends BlockContentNode {
   }
 }
 
+class ImageNodeList extends BlockContentNode {
+  const ImageNodeList(this.images, {super.debugHtmlNode});
+
+  final List<ImageNode> images;
+
+  @override
+  List<DiagnosticsNode> debugDescribeChildren() {
+    return images.map((node) => node.toDiagnosticsNode()).toList();
+  }
+}
+
 class ImageNode extends BlockContentNode {
   const ImageNode({super.debugHtmlNode, required this.srcUrl});
 
@@ -1013,13 +1024,26 @@ class _ZulipContentParser {
 
   List<BlockContentNode> parseBlockContentList(dom.NodeList nodes) {
     assert(_debugParserContext == _ParserContext.block);
-    final acceptedNodes = nodes.where((node) {
+    final List<BlockContentNode> blocks = [];
+    List<ImageNode> imageNodes = [];
+    for (final node in nodes) {
       // We get a bunch of newline Text nodes between paragraphs.
       // A browser seems to ignore these; let's do the same.
-      if (node is dom.Text && (node.text == '\n')) return false;
-      return true;
-    });
-    return acceptedNodes.map(parseBlockContent).toList(growable: false);
+      if (node is dom.Text && (node.text == '\n')) continue;
+
+      final block = parseBlockContent(node);
+      if (block is ImageNode) {
+        imageNodes.add(block);
+        continue;
+      }
+      if (imageNodes.isNotEmpty) {
+        blocks.add(ImageNodeList(imageNodes));
+        imageNodes = [];
+      }
+      blocks.add(block);
+    }
+    if (imageNodes.isNotEmpty) blocks.add(ImageNodeList(imageNodes));
+    return blocks;
   }
 
   ZulipContent parse(String html) {

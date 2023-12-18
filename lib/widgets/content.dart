@@ -82,6 +82,8 @@ class BlockContentList extends StatelessWidget {
           return CodeBlock(node: node);
         } else if (node is MathBlockNode) {
           return MathBlock(node: node);
+        } else if (node is ImageNodeList) {
+          return MessageImageList(node: node);
         } else if (node is ImageNode) {
           return MessageImage(node: node);
         } else if (node is UnimplementedBlockContentNode) {
@@ -219,6 +221,18 @@ class ListItemWidget extends StatelessWidget {
   }
 }
 
+class MessageImageList extends StatelessWidget {
+  const MessageImageList({super.key, required this.node});
+
+  final ImageNodeList node;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      children: node.images.map((imageNode) => MessageImage(node: imageNode)).toList());
+  }
+}
+
 class MessageImage extends StatelessWidget {
   const MessageImage({super.key, required this.node});
 
@@ -228,7 +242,6 @@ class MessageImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final message = InheritedMessage.of(context);
 
-    // TODO(#193) multiple images in a row
     // TODO image hover animation
     final src = node.srcUrl;
 
@@ -240,7 +253,7 @@ class MessageImage extends StatelessWidget {
         Navigator.of(context).push(getLightboxRoute(
           context: context, message: message, src: resolvedSrc));
       },
-      child: Align(
+      child: UnconstrainedBox(
         alignment: Alignment.centerLeft,
         child: Padding(
           // TODO clean up this padding by imitating web less precisely;

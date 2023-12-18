@@ -262,6 +262,102 @@ void main() {
     tester.widget(find.text(r'\lambda'));
   });
 
+  group('MessageImages', () {
+    final message = eg.streamMessage();
+
+    Future<void> prepareContent(WidgetTester tester, String html) async {
+      addTearDown(testBinding.reset);
+
+      await testBinding.globalStore.add(eg.selfAccount, eg.initialSnapshot());
+      final httpClient = FakeImageHttpClient();
+
+      debugNetworkImageHttpClientProvider = () => httpClient;
+      httpClient.request.response
+        ..statusCode = HttpStatus.ok
+        ..content = kSolidBlueAvatar;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.ltr,
+            child: GlobalStoreWidget(
+              child: PerAccountStoreWidget(
+                accountId: eg.selfAccount.id,
+                child: MessageContent(
+                  message: message,
+                  content: parseContent(html)))))));
+      await tester.pump(); // global store
+      await tester.pump(); // per-account store
+      debugNetworkImageHttpClientProvider = null;
+    }
+
+    testWidgets('single image', (tester) async {
+      // "https://chat.zulip.org/user_avatars/2/realm/icon.png?version=3"
+      await prepareContent(tester,
+        '<div class="message_inline_image">'
+          '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=3">'
+            '<img src="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=3"></a></div>');
+      tester.widget(find.byType(RealmContentNetworkImage));
+      final images = tester.widgetList<RealmContentNetworkImage>(find.byType(RealmContentNetworkImage));
+      check(images.map((i) => i.src.toString()).toList())
+        .deepEquals([
+          'https://chat.zulip.org/user_avatars/2/realm/icon.png?version=3'
+        ]);
+    });
+
+    testWidgets('parse multiple images', (tester) async {
+      // "https://chat.zulip.org/user_avatars/2/realm/icon.png?version=3\nhttps://chat.zulip.org/user_avatars/2/realm/icon.png?version=4"
+      await prepareContent(tester,
+        '<p>'
+          '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=3">https://chat.zulip.org/user_avatars/2/realm/icon.png?version=3</a><br>\n'
+          '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=4">https://chat.zulip.org/user_avatars/2/realm/icon.png?version=4</a></p>\n'
+        '<div class="message_inline_image">'
+          '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=3">'
+            '<img src="https://uploads.zulipusercontent.net/f535ba07f95b99a83aa48e44fd62bbb6c6cf6615/68747470733a2f2f636861742e7a756c69702e6f72672f757365725f617661746172732f322f7265616c6d2f69636f6e2e706e673f76657273696f6e3d33"></a></div>'
+        '<div class="message_inline_image">'
+          '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=4">'
+            '<img src="https://uploads.zulipusercontent.net/8f63bc2632a0e41be3f457d86c077e61b4a03e7e/68747470733a2f2f636861742e7a756c69702e6f72672f757365725f617661746172732f322f7265616c6d2f69636f6e2e706e673f76657273696f6e3d34"></a></div>');
+      final images = tester.widgetList<RealmContentNetworkImage>(find.byType(RealmContentNetworkImage));
+      check(images.map((i) => i.src.toString()).toList())
+        .deepEquals([
+          'https://uploads.zulipusercontent.net/f535ba07f95b99a83aa48e44fd62bbb6c6cf6615/68747470733a2f2f636861742e7a756c69702e6f72672f757365725f617661746172732f322f7265616c6d2f69636f6e2e706e673f76657273696f6e3d33',
+          'https://uploads.zulipusercontent.net/8f63bc2632a0e41be3f457d86c077e61b4a03e7e/68747470733a2f2f636861742e7a756c69702e6f72672f757365725f617661746172732f322f7265616c6d2f69636f6e2e706e673f76657273696f6e3d34',
+        ]);
+    });
+
+    testWidgets('multiple clusters of images', (tester) async {
+      // "https://en.wikipedia.org/static/images/icons/wikipedia.png\nhttps://en.wikipedia.org/static/images/icons/wikipedia.png?v=1\n\nTest\n\nhttps://en.wikipedia.org/static/images/icons/wikipedia.png?v=2\nhttps://en.wikipedia.org/static/images/icons/wikipedia.png?v=3"
+      await prepareContent(tester,
+        '<p>'
+          '<a href="https://en.wikipedia.org/static/images/icons/wikipedia.png">https://en.wikipedia.org/static/images/icons/wikipedia.png</a><br>\n'
+          '<a href="https://en.wikipedia.org/static/images/icons/wikipedia.png?v=1">https://en.wikipedia.org/static/images/icons/wikipedia.png?v=1</a></p>\n'
+        '<div class="message_inline_image">'
+          '<a href="https://en.wikipedia.org/static/images/icons/wikipedia.png">'
+            '<img src="https://uploads.zulipusercontent.net/34b2695ca83af76204b0b25a8f2019ee35ec38fa/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e67"></a></div>'
+        '<div class="message_inline_image">'
+          '<a href="https://en.wikipedia.org/static/images/icons/wikipedia.png?v=1">'
+            '<img src="https://uploads.zulipusercontent.net/d200fb112aaccbff9df767373a201fa59601f362/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e673f763d31"></a></div>'
+        '<p>Test</p>\n'
+        '<p>'
+          '<a href="https://en.wikipedia.org/static/images/icons/wikipedia.png?v=2">https://en.wikipedia.org/static/images/icons/wikipedia.png?v=2</a><br>\n'
+          '<a href="https://en.wikipedia.org/static/images/icons/wikipedia.png?v=3">https://en.wikipedia.org/static/images/icons/wikipedia.png?v=3</a></p>\n'
+        '<div class="message_inline_image">'
+          '<a href="https://en.wikipedia.org/static/images/icons/wikipedia.png?v=2">'
+            '<img src="https://uploads.zulipusercontent.net/c4db87e81348dac94eacaa966b46d968b34029cc/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e673f763d32"></a></div>'
+        '<div class="message_inline_image">'
+          '<a href="https://en.wikipedia.org/static/images/icons/wikipedia.png?v=3">'
+            '<img src="https://uploads.zulipusercontent.net/51b70540cf6a5b3c8a0b919c893b8abddd447e88/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e673f763d33"></a></div>');
+      final images = tester.widgetList<RealmContentNetworkImage>(find.byType(RealmContentNetworkImage));
+      check(images.map((i) => i.src.toString()).toList())
+        .deepEquals([
+          'https://uploads.zulipusercontent.net/34b2695ca83af76204b0b25a8f2019ee35ec38fa/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e67',
+          'https://uploads.zulipusercontent.net/d200fb112aaccbff9df767373a201fa59601f362/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e673f763d31',
+          'https://uploads.zulipusercontent.net/c4db87e81348dac94eacaa966b46d968b34029cc/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e673f763d32',
+          'https://uploads.zulipusercontent.net/51b70540cf6a5b3c8a0b919c893b8abddd447e88/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e673f763d33',
+        ]);
+    });
+  });
+
   group('RealmContentNetworkImage', () {
     final authHeaders = authHeader(email: eg.selfAccount.email, apiKey: eg.selfAccount.apiKey);
 
