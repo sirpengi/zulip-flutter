@@ -356,6 +356,42 @@ void main() {
           'https://uploads.zulipusercontent.net/51b70540cf6a5b3c8a0b919c893b8abddd447e88/68747470733a2f2f656e2e77696b6970656469612e6f72672f7374617469632f696d616765732f69636f6e732f77696b6970656469612e706e673f763d33',
         ]);
     });
+
+    testWidgets('image as immediate child in list item', (tester) async {
+      // "* https://chat.zulip.org/user_avatars/2/realm/icon.png"
+      await prepareContent(tester,
+        '<ul>\n'
+          '<li>'
+            '<div class="message_inline_image">'
+              '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png">'
+                '<img src="https://chat.zulip.org/user_avatars/2/realm/icon.png"></a></div></li>\n</ul>');
+      final images = tester.widgetList<RealmContentNetworkImage>(find.byType(RealmContentNetworkImage));
+      check(images.map((i) => i.src.toString()).toList())
+        .deepEquals([
+          'https://chat.zulip.org/user_avatars/2/realm/icon.png',
+        ]);
+    });
+
+    testWidgets('image cluster in list item', (tester) async {
+      // "* [icon.png](https://chat.zulip.org/user_avatars/2/realm/icon.png) [icon.png](https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2)"
+      await prepareContent(tester,
+        '<ul>\n'
+          '<li>'
+            '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png">icon.png</a> '
+            '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2">icon.png</a>'
+            '<div class="message_inline_image">'
+              '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png" title="icon.png">'
+                '<img src="https://chat.zulip.org/user_avatars/2/realm/icon.png"></a></div>'
+            '<div class="message_inline_image">'
+              '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2" title="icon.png">'
+                '<img src="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2"></hia></div></li>\n</ul>');
+      final images = tester.widgetList<RealmContentNetworkImage>(find.byType(RealmContentNetworkImage));
+      check(images.map((i) => i.src.toString()).toList())
+        .deepEquals([
+          'https://chat.zulip.org/user_avatars/2/realm/icon.png',
+          'https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2',
+        ]);
+    });
   });
 
   group('RealmContentNetworkImage', () {
