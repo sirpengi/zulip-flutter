@@ -1016,9 +1016,19 @@ class _ZulipContentParser {
       if (node is dom.Text && (node.text == '\n')) continue;
 
       if (_isPossibleInlineNode(node)) {
-        // TODO: It seems impossible to trigger this using real markup.
-        //   Images are always the final items of a list item.
-        if (imageNodes.isNotEmpty) consumeImages();
+        if (imageNodes.isNotEmpty) {
+          consumeImages();
+          // In a context where paragraphs are implicit it
+          // should be impossible to have more paragraph
+          // content after image previews.
+          result.add(ParagraphNode(
+            wasImplicit: true,
+            links: null,
+            nodes: [UnimplementedInlineContentNode(htmlNode: node)]
+          ));
+          // But what to do with the rest of the content?
+          continue;
+        }
         currentParagraph.add(node);
         continue;
       }

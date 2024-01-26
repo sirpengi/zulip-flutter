@@ -531,7 +531,8 @@ void main() {
         ]),
       ]);
 
-    testParse('image as immediate child in list item',
+    // TODO: maybe delete this
+    testParse('image as immediate child in implicit paragraph',
       // "* https://chat.zulip.org/user_avatars/2/realm/icon.png"
       '<ul>\n'
         '<li>'
@@ -546,7 +547,7 @@ void main() {
         ]]),
       ]);
 
-    testParse('image cluster in list item',
+    testParse('image cluster in implicit paragraph',
       // "* [icon.png](https://chat.zulip.org/user_avatars/2/realm/icon.png) [icon.png](https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2)"
       '<ul>\n'
         '<li>'
@@ -572,34 +573,26 @@ void main() {
         ]]),
       ]);
 
-    testParse('content after image cluster in list item',
-      // "* [icon.png](https://chat.zulip.org/user_avatars/2/realm/icon.png) [icon.png](https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2)\n\n   another paragraph"
+    testParse('impossible content after image cluster in implicit paragraph',
       '<ul>\n'
-        '<li>\n'
-          '<p>'
-            '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png">icon.png</a> '
-            '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2">icon.png</a></p>\n'
+        '<li>'
+          '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png">icon.png</a> '
           '<div class="message_inline_image">'
             '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png" title="icon.png">'
               '<img src="https://chat.zulip.org/user_avatars/2/realm/icon.png"></a></div>'
-          '<div class="message_inline_image">'
-            '<a href="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2" title="icon.png">'
-              '<img src="https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2"></a></div>'
-          '<p>another paragraph</p>\n</li>\n</ul>',
-      const [
+          '<span>Some content</span></li>\n</ul>',
+      [
         ListNode(ListStyle.unordered, [[
-          ParagraphNode(links: null, nodes: [
+          const ParagraphNode(wasImplicit: true, links: null, nodes: [
             LinkNode(url: 'https://chat.zulip.org/user_avatars/2/realm/icon.png', nodes: [TextNode('icon.png')]),
             TextNode(' '),
-            LinkNode(url: 'https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2', nodes: [TextNode('icon.png')]),
           ]),
-          ImageNodeList([
+          const ImageNodeList([
             ImageNode(srcUrl: 'https://chat.zulip.org/user_avatars/2/realm/icon.png'),
-            ImageNode(srcUrl: 'https://chat.zulip.org/user_avatars/2/realm/icon.png?version=2'),
           ]),
-          ParagraphNode(links: null, nodes: [
-            TextNode('another paragraph'),
-          ]),
+          ParagraphNode(wasImplicit: true, links: null, nodes: [
+            inlineUnimplemented('<span>Some content</span>'),
+          ])
         ]]),
       ]);
   });
