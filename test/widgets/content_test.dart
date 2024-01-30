@@ -93,6 +93,17 @@ void main() {
     tester.widget(find.text(r'\lambda'));
   });
 
+  testWidgets('GlobalTime smoke', (tester) async {
+    // "<time:2024-01-30T17:33:00Z">"
+    await tester.pumpWidget(MaterialApp(home: BlockContentList(nodes: parseContent(
+      '<p><time datetime="2024-01-30T17:33:00Z">2024-01-30T17:33:00Z</time></p>'
+    ).nodes)));
+    // The time is shown in the user's timezone and the result will depend on
+    // the timezone of the environment running this test. Accept here a wide
+    // range of times.
+    tester.widget(find.textContaining(RegExp(r'^Tue, Jan 30, 2024, \d+:\d\d [AP]M$')));
+  });
+
   Future<void> tapText(WidgetTester tester, Finder textFinder) async {
     final height = tester.getSize(textFinder).height;
     final target = tester.getTopLeft(textFinder)
